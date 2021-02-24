@@ -23,6 +23,7 @@ use log::error;
 use rayon::prelude::*;
 use regex::Regex;
 use rustc_demangle::demangle;
+use serde::Serialize;
 use structopt::{clap::arg_enum, StructOpt};
 use utils::{add_pre_ext, Append};
 
@@ -122,12 +123,25 @@ pub struct Opt {
     verbose: usize,
 }
 
+#[derive(Serialize, Debug)]
+struct ExternalTool {
+    bc_path: PathBuf,
+    entry_points: Vec<EntryPoint>,
+}
+
+#[derive(Serialize, Debug)]
+struct EntryPoint {
+    unmangled: String,
+    mangled: String,
+}
+
 arg_enum! {
     #[derive(Debug, PartialEq, Copy, Clone)]
     enum Backend {
         Proptest,
         Klee,
         Seahorn,
+        External
     }
 }
 
@@ -195,6 +209,9 @@ fn process_command_line() -> CVResult<Opt> {
             }
             Backend::Seahorn
         }
+        Some(Backend::External) => {
+            Backend::External
+        }
         None => {
             // If the user did not specify a backend, use the first one that we find.
             let backend = if klee::check_install() {
@@ -237,6 +254,10 @@ fn process_command_line() -> CVResult<Opt> {
         }
         Backend::Klee => {
             opt.features.push(String::from("verifier-klee"));
+        }
+
+        Backend::External => {
+            opt.features.push(String::from("verifier-seahorn"));
         }
     }
 
@@ -341,45 +362,71 @@ fn verify(opt: &Opt, package: &str, target: &str) -> CVResult<Status> {
     );
     info_at!(opt, 4, "Mangled: {:?}", tests);
 
-    // For each test function, we run the backend and sift through its
-    // output to generate an appropriate status string.
-    println!("Running {} test(s)", tests.len());
+    if opt.backend == Backend::External {
+        // Some data structure.
+        let entry_points: Vec<EntryPoint> = tests
+            .into_iter()
+            .map(|mappings| {
+                let ep = EntryPoint {
+                  unmangled: mappings.0,
+                  mangled : mappings.1,
+                };
+                ep
+            })
+            .collect();
+        let external = ExternalTool {
+            bc_path: bcfile.to_owned(),
+            entry_points
+        };
 
-    let results: Vec<Status> = if opt.jobs > 1 {
-        // Run the verification in parallel.
+        // Serialize it to a JSON string.
+        let j = serde_json::to_string(&external)?;
 
-        // `build_global` must not be called more than once!
-        // This call configures the thread-pool for `par_iter` below.
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(opt.jobs)
-            .build_global()?;
+        // Print, write to a file, or send to an HTTP server.
+        println!("{}", j);
 
-        tests
-            .par_iter() // <- parallelised iterator
-            .map(|(name, entry)| verifier_run(&opt, &bcfile, &name, &entry))
-            .collect()
+        Ok(Status::Verified)
     } else {
-        // Same as above but without the overhead of rayon
-        tests
-            .iter() // <- this is the only difference
-            .map(|(name, entry)| verifier_run(&opt, &bcfile, &name, &entry))
-            .collect()
-    };
+        // For each test function, we run the backend and sift through its
+        // output to generate an appropriate status string.
+        println!("Running {} test(s)", tests.len());
 
-    // Count pass/fail
-    let passes = results.iter().filter(|r| **r == Status::Verified).count();
-    let fails = results.len() - passes;
-    // randomly pick one failing status (if any)
-    let status = results
-        .into_iter()
-        .find(|r| *r != Status::Verified)
-        .unwrap_or(Status::Verified);
+        let results: Vec<Status> = if opt.jobs > 1 {
+            // Run the verification in parallel.
 
-    println!(
-        "test result: {:#}. {} passed; {} failed",
-        status, passes, fails
-    );
-    Ok(status)
+            // `build_global` must not be called more than once!
+            // This call configures the thread-pool for `par_iter` below.
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(opt.jobs)
+                .build_global()?;
+
+            tests
+                .par_iter() // <- parallelised iterator
+                .map(|(name, entry)| verifier_run(&opt, &bcfile, &name, &entry))
+                .collect()
+        } else {
+            // Same as above but without the overhead of rayon
+            tests
+                .iter() // <- this is the only difference
+                .map(|(name, entry)| verifier_run(&opt, &bcfile, &name, &entry))
+                .collect()
+        };
+
+        // Count pass/fail
+        let passes = results.iter().filter(|r| **r == Status::Verified).count();
+        let fails = results.len() - passes;
+        // randomly pick one failing status (if any)
+        let status = results
+            .into_iter()
+            .find(|r| *r != Status::Verified)
+            .unwrap_or(Status::Verified);
+
+        println!(
+            "test result: {:#}. {} passed; {} failed",
+            status, passes, fails
+        );
+        Ok(status)
+    }
 }
 
 /// Invoke one of the supported verification backends on entry point 'entry'
@@ -388,6 +435,7 @@ fn verifier_run(opt: &Opt, bcfile: &Path, name: &str, entry: &str) -> Status {
     let status = match opt.backend {
         Backend::Klee => klee::verify(&opt, &name, &entry, &bcfile),
         Backend::Seahorn => seahorn::verify(&opt, &name, &entry, &bcfile),
+        Backend::External => seahorn::verify(&opt, &name, &entry, &bcfile),
         Backend::Proptest => unreachable!(),
     }
     .unwrap_or_else(|err| {
