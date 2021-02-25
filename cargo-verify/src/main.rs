@@ -222,7 +222,7 @@ fn process_command_line() -> CVResult<Opt> {
                 assert!(proptest::check_install());
                 Backend::Proptest
             };
-            println!("Using {} as backend", backend);
+            eprintln!("Using {} as backend", backend);
             backend
         }
     };
@@ -295,7 +295,7 @@ fn main() -> CVResult<()> {
         exit(1)
     });
 
-    println!("VERIFICATION_RESULT: {}", status);
+    eprintln!("VERIFICATION_RESULT: {}", status);
     if status != Status::Verified {
         exit(1);
     }
@@ -389,7 +389,7 @@ fn verify(opt: &Opt, package: &str, target: &str) -> CVResult<Status> {
     } else {
         // For each test function, we run the backend and sift through its
         // output to generate an appropriate status string.
-        println!("Running {} test(s)", tests.len());
+        eprintln!("Running {} test(s)", tests.len());
 
         let results: Vec<Status> = if opt.jobs > 1 {
             // Run the verification in parallel.
@@ -421,7 +421,7 @@ fn verify(opt: &Opt, package: &str, target: &str) -> CVResult<Status> {
             .find(|r| *r != Status::Verified)
             .unwrap_or(Status::Verified);
 
-        println!(
+        eprintln!(
             "test result: {:#}. {} passed; {} failed",
             status, passes, fails
         );
@@ -444,7 +444,7 @@ fn verifier_run(opt: &Opt, bcfile: &Path, name: &str, entry: &str) -> Status {
         Status::Unknown
     });
 
-    println!("test {} ... {:#}", name, status);
+    eprintln!("test {} ... {:#}", name, status);
     status
 }
 

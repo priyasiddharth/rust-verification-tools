@@ -83,7 +83,7 @@ pub fn verify(opt: &Opt, name: &str, entry: &str, bcfile: &Path) -> CVResult<Sta
         ktests.sort_unstable();
 
         for ktest in ktests {
-            println!("    Test input {}", ktest.to_str().unwrap_or("???"));
+            eprintln!("    Test input {}", ktest.to_str().unwrap_or("???"));
             match replay_klee(&opt, &name, &ktest) {
                 Ok(()) => (),
                 Err(err) => warn!("Failed to replay: {}", err),
@@ -271,7 +271,7 @@ fn run(
 
     for l in stderr.lines() {
         if importance(&l, &expect, &name) < opt.verbose as i8 {
-            println!("{}", l);
+            eprintln!("{}", l);
         }
     }
 
@@ -315,7 +315,7 @@ fn replay_klee(opt: &Opt, name: &str, ktest: &Path) -> CVResult<()> {
     let (stdout, stderr, _success) = cmd.output_info_ignore_exit()?;
 
     for line in stdout.lines().chain(stderr.lines()) {
-        println!("{}", line);
+        eprintln!("{}", line);
     }
 
     Ok(())
