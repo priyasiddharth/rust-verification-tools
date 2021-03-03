@@ -8,13 +8,7 @@
 
 #![feature(command_access)]
 
-use std::{
-    collections::HashSet,
-    error, fmt,
-    path::{Path, PathBuf},
-    process::{exit, Command},
-    str::from_utf8,
-};
+use std::{collections::HashSet, error, fmt, path::{Path, PathBuf}, process::{exit, Command}, str::from_utf8, fs};
 
 use cargo_metadata::{CargoOpt, MetadataCommand};
 use glob::glob;
@@ -23,6 +17,7 @@ use log::error;
 use rayon::prelude::*;
 use regex::Regex;
 use rustc_demangle::demangle;
+use serde::Serialize;
 use structopt::{clap::arg_enum, StructOpt};
 use utils::{add_pre_ext, Append};
 
@@ -92,6 +87,10 @@ pub struct Opt {
     #[structopt(short, long)]
     clean: bool,
 
+    /// Run `cargo clean` first
+    #[structopt(short, long)]
+    dry_run: bool,
+
     /// Verify all tests instead of 'main'
     #[structopt(short, long)]
     tests: bool,
@@ -120,6 +119,27 @@ pub struct Opt {
     /// Use verbose output (-vvvvvv very verbose output)
     #[structopt(short, long, parse(from_occurrences))]
     verbose: usize,
+
+    /// Output external info to file
+    #[structopt(
+    long = "output",
+    short = "o",
+    name = "OUTPUT_PATH",
+    parse(from_os_str),
+    )]
+    output_file: Option<PathBuf>,
+}
+
+#[derive(Serialize, Debug)]
+struct ExternalTool {
+    bc_path: PathBuf,
+    entry_points: Vec<EntryPoint>,
+}
+
+#[derive(Serialize, Debug)]
+struct EntryPoint {
+    unmangled: String,
+    mangled: String,
 }
 
 arg_enum! {
@@ -341,45 +361,74 @@ fn verify(opt: &Opt, package: &str, target: &str) -> CVResult<Status> {
     );
     info_at!(opt, 4, "Mangled: {:?}", tests);
 
-    // For each test function, we run the backend and sift through its
-    // output to generate an appropriate status string.
-    println!("Running {} test(s)", tests.len());
+    if opt.dry_run {
+        // Some data structure.
+        let entry_points: Vec<EntryPoint> = tests
+            .into_iter()
+            .map(|mappings| {
+                let ep = EntryPoint {
+                  unmangled: mappings.0,
+                  mangled : mappings.1,
+                };
+                ep
+            })
+            .collect();
+        let external = ExternalTool {
+            bc_path: bcfile.to_owned(),
+            entry_points
+        };
 
-    let results: Vec<Status> = if opt.jobs > 1 {
-        // Run the verification in parallel.
+        // Serialize it to a JSON string.
+        let json = serde_json::to_string(&external)?;
 
-        // `build_global` must not be called more than once!
-        // This call configures the thread-pool for `par_iter` below.
-        rayon::ThreadPoolBuilder::new()
-            .num_threads(opt.jobs)
-            .build_global()?;
+        // output to file or stdout
+        match &opt.output_file {
+            None => { println!("{}", json); }
+            Some(path) => { fs::write(path, json)?; }
+        }
 
-        tests
-            .par_iter() // <- parallelised iterator
-            .map(|(name, entry)| verifier_run(&opt, &bcfile, &name, &entry))
-            .collect()
+        Ok(Status::Verified)
     } else {
-        // Same as above but without the overhead of rayon
-        tests
-            .iter() // <- this is the only difference
-            .map(|(name, entry)| verifier_run(&opt, &bcfile, &name, &entry))
-            .collect()
-    };
+        // For each test function, we run the backend and sift through its
+        // output to generate an appropriate status string.
+        println!("Running {} test(s)", tests.len());
 
-    // Count pass/fail
-    let passes = results.iter().filter(|r| **r == Status::Verified).count();
-    let fails = results.len() - passes;
-    // randomly pick one failing status (if any)
-    let status = results
-        .into_iter()
-        .find(|r| *r != Status::Verified)
-        .unwrap_or(Status::Verified);
+        let results: Vec<Status> = if opt.jobs > 1 {
+            // Run the verification in parallel.
 
-    println!(
-        "test result: {:#}. {} passed; {} failed",
-        status, passes, fails
-    );
-    Ok(status)
+            // `build_global` must not be called more than once!
+            // This call configures the thread-pool for `par_iter` below.
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(opt.jobs)
+                .build_global()?;
+
+            tests
+                .par_iter() // <- parallelised iterator
+                .map(|(name, entry)| verifier_run(&opt, &bcfile, &name, &entry))
+                .collect()
+        } else {
+            // Same as above but without the overhead of rayon
+            tests
+                .iter() // <- this is the only difference
+                .map(|(name, entry)| verifier_run(&opt, &bcfile, &name, &entry))
+                .collect()
+        };
+
+        // Count pass/fail
+        let passes = results.iter().filter(|r| **r == Status::Verified).count();
+        let fails = results.len() - passes;
+        // randomly pick one failing status (if any)
+        let status = results
+            .into_iter()
+            .find(|r| *r != Status::Verified)
+            .unwrap_or(Status::Verified);
+
+        println!(
+            "test result: {:#}. {} passed; {} failed",
+            status, passes, fails
+        );
+        Ok(status)
+    }
 }
 
 /// Invoke one of the supported verification backends on entry point 'entry'
