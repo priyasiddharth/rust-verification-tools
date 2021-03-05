@@ -22,6 +22,13 @@ void __VERIFIER_assume(int pred) {
   }
 }
 
+void __VERIFIER_assert(int pred) {
+  if (pred == 0) {
+    fprintf(stderr, "ERROR: a verification assertion has been violated.");
+    exit(1);
+  }
+}
+
 uint8_t   __VERIFIER_nondet_u8()    { return 0; }
 uint16_t  __VERIFIER_nondet_u16()   { return 0; }
 uint32_t  __VERIFIER_nondet_u32()   { return 0; }

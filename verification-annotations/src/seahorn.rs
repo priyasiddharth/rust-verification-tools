@@ -155,6 +155,15 @@ macro_rules! assert {
     ($cond:expr,) => { $crate::assert!($cond) };
     ($cond:expr) => { $crate::assert!($cond, "assertion failed: {}", stringify!($cond)) };
     ($cond:expr, $($arg:tt)+) => {{
+        extern {
+            fn __VERIFIER_assert(pred: i32);
+        }
+        fn sassert(pred: bool) {
+           unsafe {
+                __VERIFIER_assert(pred as i32);
+           }
+        }
+        sassert($cond);
         if ! $cond {
             let message = format!($($arg)+);
             eprintln!("VERIFIER: panicked at '{}', {}:{}:{}",

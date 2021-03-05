@@ -200,17 +200,19 @@ fn process_command_line() -> CVResult<Opt> {
     opt.backend = match opt.backend_arg {
         // Check if the backend that was specified on the CL is installed.
         Some(Backend::Proptest) => {
-            assert!(proptest::check_install());
+            if !opt.dry_run {
+                assert!(proptest::check_install());
+            }
             Backend::Proptest
         }
         Some(Backend::Klee) => {
-            if !klee::check_install() {
+            if !opt.dry_run && !klee::check_install() {
                 Err("Klee is not installed")?;
             }
             Backend::Klee
         }
         Some(Backend::Seahorn) => {
-            if !seahorn::check_install() {
+            if !opt.dry_run && !seahorn::check_install() {
                 Err("Seahorn is not installed")?;
             }
             Backend::Seahorn
