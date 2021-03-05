@@ -16,7 +16,12 @@ USER_ID=${LOCAL_USER_ID:-9001}
 GROUP_ID=${LOCAL_GROUP_ID:-$USER_ID}
 
 echo "Starting with UID : $USER_ID, GID: $GROUP_ID"
-groupadd -g $GROUP_ID thegroup
-useradd --shell /bin/bash -u $USER_ID -g thegroup -o -c "" -m user
-export HOME=/home/s2priya/
-exec /usr/bin/gosu user:thegroup "$@"
+id -g $USER_ID 1>/dev/null
+if [ $? -eq 0 ]; then
+    exec /usr/bin/gosu $USER_ID:$GROUP_ID "$@"
+else
+    groupadd -g  $GROUP_ID thegroup
+    useradd --shell /bin/bash -u $USER_ID -g thegroup -o -c "" -m user
+    export HOME=/home/s2priya/
+    exec /usr/bin/gosu user:thegroup "$@"
+fi
