@@ -20,7 +20,7 @@ COPY --from=sudobmitch/base:scratch / /
 # add an entrypoint to call fix-perms
 COPY ./entrypoint.sh /usr/bin/
 RUN apt-get install -y nano
-#ENTRYPOINT ["/usr/bin/entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/entrypoint.sh"]
 
 # Switch to USERNAME and install tools / set environment
 USER ${USERNAME}
