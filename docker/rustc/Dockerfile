@@ -26,7 +26,8 @@ RUN cd ${RUSTC_DIR} \
 # Build llvm tools, rustc, lib{core,std,...} and cargo
 RUN cd ${RUSTC_DIR} && python3 ./x.py build --incremental --stage 1 llvm \
   && cd ${RUSTC_DIR} && python3 ./x.py build --incremental --stage 1 \
-  && cd ${RUSTC_DIR} && python3 ./x.py build --incremental --stage 1 src/tools/cargo
+  && cd ${RUSTC_DIR} && python3 ./x.py build --incremental --stage 1 src/tools/cargo \
+  && cd ${RUSTC_DIR} && python3 ./x.py build --stage 1 src/tools/rustdoc src/libstd
 
 ENV PATH="${RUSTC_DIR}/build/x86_64-unknown-linux-gnu/stage1-tools-bin:${PATH}"
 ENV PATH="${RUSTC_DIR}/build/x86_64-unknown-linux-gnu/llvm/bin:${PATH}"

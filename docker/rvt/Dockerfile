@@ -55,13 +55,11 @@ RUN rustup toolchain install nightly
 #
 # There seems to be no way around this complex collection of hacks.
 COPY --chown=${USER_UID}:${USER_GID} ./rvt-patch-llvm ${USER_HOME}/rvt-patch-llvm
-RUN cargo install --root=${USER_HOME} --path=${USER_HOME}/rvt-patch-llvm
+RUN cargo +nightly install --root=${USER_HOME} --path=${USER_HOME}/rvt-patch-llvm
 
 # Build cargo-verify too
 COPY --chown=${USER_UID}:${USER_GID} ./cargo-verify ${USER_HOME}/cargo-verify
 RUN cargo +nightly install --root=${USER_HOME} --path=${USER_HOME}/cargo-verify
 
 # Create a bashrc file
-RUN echo "export PATH=\"${PATH}\"" >> ${USER_HOME}/.bashrc \\
-  && echo "ulimit -c0" >> ${USER_HOME}/.bashrc
-
+RUN echo "export PATH=\"${PATH}\"" >> ${USER_HOME}/.bashrc
