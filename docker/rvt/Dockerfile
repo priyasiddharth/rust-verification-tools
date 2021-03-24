@@ -68,5 +68,8 @@ RUN cargo +nightly install --root=${USER_HOME} --path=${USER_HOME}/rvt-patch-llv
 COPY --chown=${USER_UID}:${USER_GID} ./cargo-verify ${USER_HOME}/cargo-verify
 RUN cargo +nightly install --root=${USER_HOME} --path=${USER_HOME}/cargo-verify
 
+# Build and install xargo tool
+RUN cargo +nightly install --root=${USER_HOME} --git https://github.com/priyasiddharth/xargo.git xargo
+
 # Create a bashrc file
 RUN echo "export PATH=\"${PATH}\"" >> ${USER_HOME}/.bashrc
