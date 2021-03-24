@@ -11,9 +11,9 @@ echo Making docker image ${DOCKER_IMAGE_NAME}:${DOCKER_VERSION} using ${DOCKER_F
 # ID, if known.
 # See
 # https://github.com/googleapis/google-cloud-cpp/blob/a186208b79d900b4ec71c6f9df3acf7638f01dc6/ci/kokoro/docker/build.sh#L147-L152
-readonly DOCKER_UID="${UID:-0}"
-readonly DOCKER_GID="$(id -g)"
-readonly DOCKER_USER="${USER:-root}"
+readonly DOCKER_UID="9997"
+readonly DOCKER_GID="9997"
+readonly DOCKER_USER="creator"
 
 sudo docker build \
   --file=${DOCKER_FILE} \

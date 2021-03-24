@@ -16,7 +16,7 @@ USER_ID=${LOCAL_USER_ID:-9001}
 GROUP_ID=${LOCAL_GROUP_ID:-$USER_ID}
 
 echo "Starting with UID : $USER_ID, GID: $GROUP_ID"
-id -g $USER_ID 1>/dev/null
+id -g $GROUP_ID >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     exec /usr/bin/gosu $USER_ID:$GROUP_ID "$@"
 else
