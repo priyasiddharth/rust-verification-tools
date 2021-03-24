@@ -34,8 +34,6 @@ mod seahorn;
 
 use run_tools::*;
 
-const TARGET_ARCH: &str = "x86_64-unknown-linux-gnu";
-
 // Command line arguments
 #[derive(StructOpt)]
 #[structopt(
@@ -48,10 +46,10 @@ pub struct Opt {
     // (i.e., path to Cargo.toml)
     /// Path to Cargo.toml
     #[structopt(
-        long = "manifest-path",
-        name = "PATH",
-        parse(from_os_str),
-        default_value = "Cargo.toml"
+    long = "manifest-path",
+    name = "PATH",
+    parse(from_os_str),
+    default_value = "Cargo.toml"
     )]
     cargo_toml: PathBuf,
 
@@ -65,11 +63,11 @@ pub struct Opt {
     // in the `backend` field.
     /// Select verification backend
     #[structopt(
-        short = "b",
-        long = "backend",
-        name = "BACKEND",
-        possible_values = &Backend::variants(),
-        case_insensitive = true,
+    short = "b",
+    long = "backend",
+    name = "BACKEND",
+    possible_values = & Backend::variants(),
+    case_insensitive = true,
     )]
     backend_arg: Option<Backend>,
 
@@ -155,9 +153,11 @@ arg_enum! {
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Status {
-    Unknown, // E.g. the verifier failed to execute.
+    Unknown,
+    // E.g. the verifier failed to execute.
     Verified,
-    Error, // E.g. the verifier found a violation.
+    Error,
+    // E.g. the verifier found a violation.
     Timeout,
     Overflow,
     Reachable,
@@ -293,10 +293,10 @@ fn main() -> CVResult<()> {
             verify(&opt, &package, &target)
         }
     }
-    .unwrap_or_else(|err| {
-        error!("{}", err);
-        exit(1)
-    });
+        .unwrap_or_else(|err| {
+            error!("{}", err);
+            exit(1)
+        });
 
     println!("VERIFICATION_RESULT: {}", status);
     if status != Status::Verified {
@@ -371,15 +371,15 @@ fn verify(opt: &Opt, package: &str, target: &str) -> CVResult<Status> {
             .into_iter()
             .map(|mappings| {
                 let ep = EntryPoint {
-                  unmangled: mappings.0,
-                  mangled : mappings.1,
+                    unmangled: mappings.0,
+                    mangled: mappings.1,
                 };
                 ep
             })
             .collect();
         let external = ExternalTool {
             bc_path: bcfile.to_owned(),
-            entry_points
+            entry_points,
         };
 
         // Serialize it to a JSON string.
@@ -443,11 +443,11 @@ fn verifier_run(opt: &Opt, bcfile: &Path, name: &str, entry: &str) -> Status {
         Backend::Seahorn => seahorn::verify(&opt, &name, &entry, &bcfile),
         Backend::Proptest => unreachable!(),
     }
-    .unwrap_or_else(|err| {
-        error!("{}", err);
-        error!("Failed to run test '{}'.", name);
-        Status::Unknown
-    });
+        .unwrap_or_else(|err| {
+            error!("{}", err);
+            error!("Failed to run test '{}'.", name);
+            Status::Unknown
+        });
 
     println!("test {} ... {:#}", name, status);
     status
@@ -537,7 +537,7 @@ fn get_build_envs(_opt: &Opt) -> CVResult<Vec<(String, String)>> {
         "-Clinker=clang-10",
         "-Clink-arg=-fuse-ld=lld",
     ]
-    .join(" ");
+        .join(" ");
 
     match std::env::var_os("RUSTFLAGS") {
         Some(env) => {
@@ -600,13 +600,13 @@ fn compile(opt: &Opt, package: &str, target: &str) -> CVResult<(PathBuf, Vec<Pat
                 .to_str()
                 .ok_or("not UTF-8")?,
         )
-        .append("*.bc"),
+            .append("*.bc"),
     )?
-    .filter_map(Result::ok)
-    // Filter only files that have exactly one '.'
-    .filter(|p| p.file_name().map(|f| f.to_string_lossy().matches('.').count() == 1).unwrap_or(false))
-    .filter(|p| count_symbols(&opt, p, &["main", "_main"]).map_or(false, |c| c > 0))
-    .collect::<Vec<_>>();
+        .filter_map(Result::ok)
+        // Filter only files that have exactly one '.'
+        .filter(|p| p.file_name().map(|f| f.to_string_lossy().matches('.').count() == 1).unwrap_or(false))
+        .filter(|p| count_symbols(&opt, p, &["main", "_main"]).map_or(false, |c| c > 0))
+        .collect::<Vec<_>>();
 
     // Make sure there is only one such file.
     let bc_file: PathBuf = match bc_files.as_slice() {
@@ -645,10 +645,10 @@ fn compile(opt: &Opt, package: &str, target: &str) -> CVResult<(PathBuf, Vec<Pat
                 .to_str()
                 .ok_or("not UTF-8")?,
         )
-        .append("/*/out/*.o"),
+            .append("/*/out/*.o"),
     )?
-    .filter_map(Result::ok)
-    .collect::<Vec<_>>();
+        .filter_map(Result::ok)
+        .collect::<Vec<_>>();
 
     // build_plan = read_build_plan(crate, flags)
     // print(json.dumps(build_plan, indent=4, sort_keys=True))
