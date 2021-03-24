@@ -34,12 +34,14 @@ mod seahorn;
 
 use run_tools::*;
 
+const TARGET_ARCH: &str = "x86_64-unknown-linux-gnu";
+
 // Command line arguments
 #[derive(StructOpt)]
 #[structopt(
-    name = "cargo-verify",
-    about = "Execute verification tools",
-    // version number is taken automatically from Cargo.toml
+name = "cargo-verify",
+about = "Execute verification tools",
+// version number is taken automatically from Cargo.toml
 )]
 pub struct Opt {
     // TODO: make this more like 'cargo test --manifest-path <PATH>'
@@ -527,7 +529,9 @@ fn get_build_envs(_opt: &Opt) -> CVResult<Vec<(String, String)>> {
         "-Coverflow-checks=yes",
         "-Cno-vectorize-loops", // KLEE does not support vector intrinisics
         "-Cno-vectorize-slp",
-        "-Ctarget-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2",
+        // TODO: add back these flags once we are consistent between xargo and cargo OR
+        // we move to using --build-std
+        //"-Ctarget-feature=-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2",
         // use clang to link with LTO - to handle calls to C libraries
         "-Clinker-plugin-lto",
         "-Clinker=clang-10",
@@ -555,9 +559,9 @@ fn get_build_envs(_opt: &Opt) -> CVResult<Vec<(String, String)>> {
 /// Return a bcfile for the entire (linked) crate, and c object files that need
 /// to be linked with the bcfile.
 fn compile(opt: &Opt, package: &str, target: &str) -> CVResult<(PathBuf, Vec<PathBuf>)> {
-    let mut cmd = Command::new("cargo");
+    let mut cmd = Command::new("xargo");
     cmd.arg("build").arg("--manifest-path").arg(&opt.cargo_toml);
-
+    //cmd.arg("--target").arg(TARGET_ARCH);
     if !opt.features.is_empty() {
         cmd.arg("--features").arg(opt.features.join(","));
     }
