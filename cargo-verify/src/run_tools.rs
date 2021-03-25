@@ -195,9 +195,9 @@ pub fn count_symbols(opt: &Opt, bcfile: &Path, fs: &[&str]) -> CVResult<usize> {
 }
 
 /// Generate a list of tests in the crate by parsing the output of
-/// `cargo test -- --list`
+/// `xargo test -- --list`
 pub fn list_tests(opt: &Opt, target: &str) -> CVResult<Vec<String>> {
-    let mut cmd = Command::new("cargo");
+    let mut cmd = Command::new("xargo");
     cmd.arg("test").arg("--manifest-path").arg(&opt.cargo_toml);
 
     if !opt.features.is_empty() {
